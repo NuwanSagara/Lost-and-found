@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { useSocket } from '../context/SocketContext';
+import { useSocket } from '../hooks/useSocket';
 import { Send, ArrowLeft, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -10,7 +10,7 @@ const Chat = () => {
     const { id } = useParams(); // claimId
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { socket } = useSocket();
+    const socket = useSocket();
     const [claim, setClaim] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');

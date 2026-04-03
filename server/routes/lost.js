@@ -7,13 +7,13 @@ const {
     updateLostItem,
     deleteLostItem,
 } = require('../controllers/lostController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireRoles, USER_ROLES } = require('../middleware/authMiddleware');
 
-router.route('/').get(getLostItems).post(protect, createLostItem);
+router.route('/').get(getLostItems).post(protect, requireRoles(USER_ROLES.CAMPUS_MEMBER, USER_ROLES.ADMIN), createLostItem);
 router
     .route('/:id')
     .get(getLostItem)
-    .put(protect, updateLostItem)
-    .delete(protect, deleteLostItem);
+    .put(protect, requireRoles(USER_ROLES.CAMPUS_MEMBER, USER_ROLES.ADMIN), updateLostItem)
+    .delete(protect, requireRoles(USER_ROLES.CAMPUS_MEMBER, USER_ROLES.ADMIN), deleteLostItem);
 
 module.exports = router;

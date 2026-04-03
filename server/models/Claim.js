@@ -5,25 +5,31 @@ const claimSchema = new mongoose.Schema(
         itemId: {
             type: mongoose.Schema.Types.ObjectId,
             required: true,
-            refPath: 'itemType',
+            ref: 'Item',
         },
         itemType: {
             type: String,
             required: true,
-            enum: ['LostItem', 'FoundItem'],
+            enum: ['lost', 'found'],
         },
         claimant: {
             type: mongoose.Schema.Types.ObjectId,
             required: true,
             ref: 'User',
         },
+        phoneNumber: {
+            type: String,
+            required: [true, 'Phone number is required'],
+            match: [/^\d{10}$/, 'Phone number must contain exactly 10 digits'],
+        },
         proofImage: {
             type: String,
-            required: [true, 'Proof photo is mandatory'],
+            default: '',
         },
         explanation: {
             type: String,
             required: [true, 'Please provide a detailed explanation'],
+            trim: true,
         },
         status: {
             type: String,
@@ -36,7 +42,4 @@ const claimSchema = new mongoose.Schema(
     }
 );
 
-// Business Rule: claim expires after 48 hours. Let's handle expiration via a cron or check-on-read.
-// For now, we'll store createdAt implicitly via timestamps
-
-module.exports = mongoose.model('Claim', claimSchema);
+module.exports = mongoose.models.Claim || mongoose.model('Claim', claimSchema);

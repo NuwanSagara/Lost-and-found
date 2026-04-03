@@ -7,7 +7,7 @@ const {
     updateFoundItem,
     deleteFoundItem,
 } = require('../controllers/foundController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireRoles, USER_ROLES } = require('../middleware/authMiddleware');
 
 router.route('/').get(getFoundItems).post(protect, createFoundItem);
 router

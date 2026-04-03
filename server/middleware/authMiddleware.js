@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { User, USER_ROLES, normalizeRole } = require('../models/User');
 
 const protect = async (req, res, next) => {
     let token;
@@ -18,24 +18,50 @@ const protect = async (req, res, next) => {
             // Get user from the token
             req.user = await User.findById(decoded.id).select('-password');
 
-            next();
+            if (!req.user) {
+                return res.status(401).json({ message: 'Not authorized, user no longer exists' });
+            }
+
+            req.user.role = normalizeRole(req.user.role);
+
+            return next();
         } catch (error) {
             console.error(error);
-            res.status(401).json({ message: 'Not authorized, token failed' });
+            return res.status(401).json({ message: 'Not authorized, token failed' });
         }
     }
 
     if (!token) {
-        res.status(401).json({ message: 'Not authorized, no token' });
+        return res.status(401).json({ message: 'Not authorized, no token' });
     }
 };
 
-const admin = (req, res, next) => {
-    if (req.user && req.user.role === 'admin') {
-        next();
-    } else {
-        res.status(401).json({ message: 'Not authorized as an admin' });
+const requireRoles = (...roles) => (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Not authorized' });
     }
+
+    const normalizedRoles = roles.map((role) => normalizeRole(role));
+    if (!normalizedRoles.includes(normalizeRole(req.user.role))) {
+        return res.status(403).json({ message: 'Not authorized for this action' });
+    }
+
+    return next();
 };
 
-module.exports = { protect, admin };
+const admin = requireRoles(USER_ROLES.ADMIN);
+const isAdmin = admin;
+const requireAdmin = requireRoles(USER_ROLES.ADMIN);
+const requireNormalUser = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    if (normalizeRole(req.user.role) === USER_ROLES.ADMIN) {
+        return res.status(403).json({ message: 'Admin accounts cannot access this route as a normal user.' });
+    }
+
+    return next();
+};
+
+module.exports = { protect, admin, isAdmin, requireAdmin, requireNormalUser, requireRoles, USER_ROLES, normalizeRole };

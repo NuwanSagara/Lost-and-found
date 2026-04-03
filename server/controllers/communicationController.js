@@ -1,6 +1,7 @@
 const Chat = require('../models/Chat');
 const Notification = require('../models/Notification');
 const Claim = require('../models/Claim');
+const { USER_ROLES, normalizeRole } = require('../middleware/authMiddleware');
 
 // @desc    Get user notifications
 // @route   GET /api/notifications
@@ -47,7 +48,7 @@ const getChat = async (req, res) => {
 
         // Simple access check (improve later if needed)
         let hasAccess = false;
-        if (claim.claimant.toString() === req.user.id || req.user.role === 'admin') {
+        if (claim.claimant.toString() === req.user.id || normalizeRole(req.user.role) === USER_ROLES.ADMIN) {
             hasAccess = true;
         } else if (claim.itemId && claim.itemId.postedBy && claim.itemId.postedBy.toString() === req.user.id) {
             hasAccess = true;
@@ -87,7 +88,7 @@ const addMessage = async (req, res) => {
         if (!chat) return res.status(404).json({ message: 'Chat not found' });
 
         // Validate participant
-        if (!chat.participants.includes(req.user.id) && req.user.role !== 'admin') {
+        if (!chat.participants.includes(req.user.id) && normalizeRole(req.user.role) !== USER_ROLES.ADMIN) {
             return res.status(401).json({ message: 'Not a participant in this chat' });
         }
 

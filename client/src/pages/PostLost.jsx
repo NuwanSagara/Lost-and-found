@@ -7,6 +7,7 @@ const PostLost = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [imageName, setImageName] = useState('');
 
     const [formData, setFormData] = useState({
         title: '',
@@ -22,16 +23,52 @@ const PostLost = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const handleImageChange = (e) => {
+        const file = e.target.files?.[0];
+
+        if (!file) {
+            setFormData({ ...formData, image: '' });
+            setImageName('');
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            setError('Please choose a valid image file.');
+            e.target.value = '';
+            setFormData({ ...formData, image: '' });
+            setImageName('');
+            return;
+        }
+
+        const maxFileSize = 5 * 1024 * 1024;
+        if (file.size > maxFileSize) {
+            setError('Image must be smaller than 5MB.');
+            e.target.value = '';
+            setFormData({ ...formData, image: '' });
+            setImageName('');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setError('');
+            setImageName(file.name);
+            setFormData((currentFormData) => ({
+                ...currentFormData,
+                image: reader.result,
+            }));
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
         try {
-            // In a real app we'd upload to Cloudinary/S3 here and get the URL back.
-            // For this boilerplate, we'll ask the user to provide an image URL.
-            if (!formData.image.startsWith('http')) {
-                setError('Please provide a valid direct image URL (starting with http)');
+            if (!formData.image) {
+                setError('Please upload an image before submitting.');
                 setLoading(false);
                 return;
             }
@@ -141,17 +178,26 @@ const PostLost = () => {
 
                             <div className="col-span-1 md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                                    <UploadCloud className="w-4 h-4 mr-1 text-gray-400" /> Image URL (Required)
+                                    <UploadCloud className="w-4 h-4 mr-1 text-gray-400" /> Upload Image (Required)
                                 </label>
                                 <input
-                                    type="image"
+                                    type="file"
                                     name="image"
                                     required
-                                    placeholder="https://example.com/image.jpg"
+                                    accept="image/*"
                                     className="w-full rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-3 border bg-gray-50"
-                                    value={formData.image}
-                                    onChange={handleChange}
+                                    onChange={handleImageChange}
                                 />
+                                <p className="mt-2 text-sm text-gray-500">
+                                    {imageName || 'Choose a photo from your device. Max size: 5MB.'}
+                                </p>
+                                {formData.image && (
+                                    <img
+                                        src={formData.image}
+                                        alt="Selected lost item"
+                                        className="mt-4 h-40 w-full rounded-xl object-cover border border-gray-200"
+                                    />
+                                )}
                             </div>
 
                             <div>

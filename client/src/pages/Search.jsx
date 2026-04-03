@@ -1,195 +1,193 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
-import { Search as SearchIcon, Filter, MapPin, Calendar, Tag, ChevronDown, PackageOpen } from 'lucide-react';
-import { format } from 'date-fns';
-import ClaimModal from '../components/ClaimModal';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { LayoutGrid, Search as SearchIcon, Loader2 } from 'lucide-react';
+import ItemCard from '../components/ui/ItemCard';
+import SearchInput from '../components/ui/SearchInput';
+import { Button } from '../components/ui/Button';
 
 const Search = () => {
-    const { user } = useAuth();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filters, setFilters] = useState({ category: 'All', status: 'All' });
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [selectedItem, setSelectedItem] = useState(null);
-    const [searchParams, setSearchParams] = useState({
-        query: '',
-        type: 'all', // all, lost, found
-        category: 'all',
-    });
+    const [error, setError] = useState('');
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
+    const LIMIT = 20;
+    const isMountedRef = useRef(true);
 
-    // Real implementation would fetch based on searchParams
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => { isMountedRef.current = false; };
+    }, []);
+
     useEffect(() => {
         const fetchItems = async () => {
             setLoading(true);
+            setError('');
             try {
-                const [lostRes, foundRes] = await Promise.all([
-                    axios.get(`${import.meta.env.VITE_API_URL}/lost`),
-                    axios.get(`${import.meta.env.VITE_API_URL}/found`)
-                ]);
+                const params = new URLSearchParams();
+                params.set('limit', LIMIT);
+                params.set('page', page);
+                params.set('sort', '-reportedAt');
+                // No status filter when status === 'All' so all statuses are included
+                if (filters.status !== 'All') params.set('status', filters.status.toLowerCase());
+                if (filters.category !== 'All') params.set('category', filters.category);
 
-                let allItems = [
-                    ...lostRes.data.map(i => ({ ...i, itemType: 'lost' })),
-                    ...foundRes.data.map(i => ({ ...i, itemType: 'found' }))
-                ];
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/items?${params.toString()}`);
+                if (!res.ok) throw new Error('Failed to load items');
+                const data = await res.json();
 
-                // Sort by newest
-                allItems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-                setItems(allItems);
-            } catch (error) {
-                console.error("Error fetching items:", error);
+                if (isMountedRef.current) {
+                    const fetchedItems = Array.isArray(data.items) ? data.items : [];
+                    setItems(page === 1 ? fetchedItems : prev => [...prev, ...fetchedItems]);
+                    setHasMore(fetchedItems.length === LIMIT);
+                }
+            } catch (err) {
+                if (isMountedRef.current) setError('Could not load items. Please try again.');
             } finally {
-                setLoading(false);
+                if (isMountedRef.current) setLoading(false);
             }
         };
-
         fetchItems();
-    }, []);
+    }, [filters.status, filters.category, page]);
 
-    const filteredItems = items.filter(item => {
-        // Text search
-        const matchesQuery = searchParams.query === '' ||
-            item.title.toLowerCase().includes(searchParams.query.toLowerCase()) ||
-            item.description.toLowerCase().includes(searchParams.query.toLowerCase());
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [filters.status, filters.category]);
 
-        // Type filter
-        const matchesType = searchParams.type === 'all' || item.itemType === searchParams.type;
-
-        // Category filter
-        const matchesCategory = searchParams.category === 'all' || item.category === searchParams.category;
-
-        return matchesQuery && matchesType && matchesCategory;
-    });
+    // Client-side search query filter (applied on top of already-fetched items)
+    const filteredItems = useMemo(() => {
+        if (!searchQuery.trim()) return items;
+        const q = searchQuery.toLowerCase();
+        return items.filter(item => {
+            const titleMatch = item.title?.toLowerCase().includes(q);
+            const descMatch = item.description?.toLowerCase().includes(q);
+            const locationName = typeof item.location === 'object' ? item.location?.name : item.location;
+            const locationMatch = locationName?.toLowerCase().includes(q);
+            return titleMatch || descMatch || locationMatch;
+        });
+    }, [items, searchQuery]);
 
     return (
-        <div className="space-y-8 animate-fade-in">
-            {/* Header and Search Bar */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="w-full md:w-1/2 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <SearchIcon className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                        type="text"
-                        className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                        placeholder="Search for keys, wallet, phone..."
-                        value={searchParams.query}
-                        onChange={(e) => setSearchParams({ ...searchParams, query: e.target.value })}
+        <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-10 pt-28">
+            <div className="max-w-[1440px] mx-auto flex flex-col items-center">
+
+                {/* Animated Title */}
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center mb-10 w-full"
+                >
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-4 tracking-tight">
+                        Explore <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-secondary">Discoveries.</span>
+                    </h1>
+                    <p className="text-text-muted text-lg max-w-2xl mx-auto font-body">
+                        Search through lost and found items in our secure community database.
+                    </p>
+                </motion.div>
+
+                {/* Search + Filters */}
+                <div className="w-full mb-16 relative z-30">
+                    <SearchInput
+                        onSearch={setSearchQuery}
+                        filters={filters}
+                        setFilters={setFilters}
                     />
                 </div>
 
-                <div className="w-full md:w-auto flex gap-3">
-                    <div className="relative">
-                        <select
-                            className="appearance-none block w-full bg-white border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            value={searchParams.type}
-                            onChange={(e) => setSearchParams({ ...searchParams, type: e.target.value })}
-                        >
-                            <option value="all">All Items</option>
-                            <option value="lost">Lost Items</option>
-                            <option value="found">Found Items</option>
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                            <ChevronDown className="h-4 w-4" />
+                {/* Results */}
+                <div className="w-full flex-1 z-10">
+                    <div className="mb-6 flex items-center justify-between text-text-muted text-sm border-b border-white/10 pb-4">
+                        <span className="font-mono text-xs uppercase tracking-widest">
+                            Showing <strong className="text-white mx-1">{filteredItems.length}</strong> results
+                        </span>
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer">
+                            <LayoutGrid size={16} className="text-brand-primary" />
+                            <span className="font-medium">Grid</span>
                         </div>
                     </div>
 
-                    <div className="relative">
-                        <select
-                            className="appearance-none block w-full bg-white border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            value={searchParams.category}
-                            onChange={(e) => setSearchParams({ ...searchParams, category: e.target.value })}
-                        >
-                            <option value="all">All Categories</option>
-                            <option value="Phone">Phone</option>
-                            <option value="Wallet">Wallet</option>
-                            <option value="ID">ID Card</option>
-                            <option value="Laptop">Laptop</option>
-                            <option value="Bag">Bag / Backpack</option>
-                            <option value="Other">Other</option>
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                            <ChevronDown className="h-4 w-4" />
+                    {loading && page === 1 ? (
+                        <div className="flex items-center justify-center py-32">
+                            <Loader2 size={40} className="animate-spin text-brand-primary" />
                         </div>
-                    </div>
+                    ) : error ? (
+                        <div className="col-span-full py-24 text-center glass-panel rounded-3xl border border-red-500/20">
+                            <p className="text-red-400 text-lg">{error}</p>
+                            <Button variant="outline" className="mt-6" onClick={() => { setPage(1); setError(''); }}>Retry</Button>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 auto-rows-[380px]">
+                            {filteredItems.length > 0 ? (
+                                filteredItems.map((item, index) => (
+                                    <motion.div
+                                        key={item._id || item.id}
+                                        initial={{ opacity: 0, y: 30 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true, margin: '-50px' }}
+                                        transition={{ duration: 0.5, delay: (index % 8) * 0.05, ease: 'easeOut' }}
+                                        className="h-full"
+                                    >
+                                        <ItemCard item={item} />
+                                    </motion.div>
+                                ))
+                            ) : (
+                                <div className="col-span-full py-32 flex flex-col items-center justify-center text-center glass-panel rounded-3xl border border-white/5">
+                                    <motion.div
+                                        initial={{ scale: 0.8, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        className="relative flex items-center justify-center mb-6"
+                                    >
+                                        <div className="absolute inset-0 bg-brand-primary/20 blur-3xl rounded-full"></div>
+                                        <SearchIcon size={80} className="text-white/20 relative z-10" strokeWidth={1} />
+                                    </motion.div>
+                                    <h3 className="text-3xl font-display font-medium text-white mb-3 tracking-tight">Nothing found.</h3>
+                                    <p className="text-text-muted max-w-md font-body text-lg">
+                                        {searchQuery ? 'No items match your search. Try different keywords.' : 'No items have been reported yet. Be the first!'}
+                                    </p>
+                                    <Button
+                                        variant="outline"
+                                        className="mt-8 px-8"
+                                        onClick={() => {
+                                            setSearchQuery('');
+                                            setFilters({ category: 'All', status: 'All' });
+                                        }}
+                                    >
+                                        Clear Filters
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Load More */}
+                    {hasMore && !loading && filteredItems.length > 0 && (
+                        <div className="mt-20 flex justify-center">
+                            <Button
+                                variant="ghost"
+                                className="px-8 rounded-full border border-white/10 hover:bg-white/5 text-text-muted hover:text-white transition-all font-medium py-3 h-auto"
+                                onClick={() => setPage(p => p + 1)}
+                                disabled={loading}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-secondary opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-full w-full bg-brand-secondary"></span>
+                                    </span>
+                                    Load more
+                                </div>
+                            </Button>
+                        </div>
+                    )}
+                    {loading && page > 1 && (
+                        <div className="flex items-center justify-center py-10">
+                            <Loader2 size={24} className="animate-spin text-brand-primary" />
+                        </div>
+                    )}
                 </div>
             </div>
-
-            {/* Results Grid */}
-            {loading ? (
-                <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-                </div>
-            ) : filteredItems.length === 0 ? (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-                    <PackageOpen className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                    <h3 className="text-xl font-medium text-gray-900">No items found</h3>
-                    <p className="mt-2 text-gray-500">Try adjusting your search criteria or filters.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredItems.map(item => (
-                        <div key={item._id} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-lg transition-all transform hover:-translate-y-1 group">
-                            {/* Image Header */}
-                            <div className="h-48 bg-gray-200 relative overflow-hidden">
-                                {item.image ? (
-                                    <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
-                                )}
-                                <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide backdrop-blur-md shadow-sm
-                  ${item.itemType === 'lost' ? 'bg-red-500/90 text-white' : 'bg-green-500/90 text-white'}`}>
-                                    {item.itemType}
-                                </div>
-                                {item.itemType === 'lost' && item.urgency === 'High' && (
-                                    <div className="absolute top-4 left-4 border border-red-500/30 bg-red-100/90 text-red-800 px-3 py-1 rounded-full text-xs font-bold uppercase backdrop-blur-md">
-                                        Urgent
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Card Body */}
-                            <div className="p-5">
-                                <h3 className="text-xl font-bold text-gray-900 mb-2 truncate" title={item.title}>{item.title}</h3>
-                                <p className="text-gray-600 text-sm line-clamp-2 mb-4 h-10">{item.description}</p>
-
-                                <div className="space-y-2 mb-6">
-                                    <div className="flex items-center text-sm text-gray-500">
-                                        <Tag className="w-4 h-4 mr-2 text-indigo-400" />
-                                        {item.category}
-                                    </div>
-                                    <div className="flex items-center text-sm text-gray-500 truncate" title={item.location}>
-                                        <MapPin className="w-4 h-4 mr-2 text-indigo-400 flex-shrink-0" />
-                                        <span className="truncate">{item.location}</span>
-                                    </div>
-                                    <div className="flex items-center text-sm text-gray-500">
-                                        <Calendar className="w-4 h-4 mr-2 text-indigo-400" />
-                                        {item.itemType === 'lost' ? 'Lost on ' : 'Found on '}
-                                        {format(new Date(item.itemType === 'lost' ? item.dateLost : item.dateFound), 'MMM d, yyyy')}
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={() => setSelectedItem(item)}
-                                    disabled={item.postedBy === user?._id}
-                                    className={`w-full py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm
-                    ${item.postedBy === user?._id
-                                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                                            : item.itemType === 'lost'
-                                                ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-                                                : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-                                >
-                                    {item.postedBy === user?._id ? "Your Post" : (item.itemType === 'lost' ? 'I Found This' : 'Claim This Item')}
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-            <ClaimModal
-                isOpen={!!selectedItem}
-                onClose={() => setSelectedItem(null)}
-                item={selectedItem}
-            />
         </div>
     );
 };

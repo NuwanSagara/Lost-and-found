@@ -24,7 +24,7 @@ const lostItemSchema = new mongoose.Schema(
             required: [true, 'Please add the date lost'],
         },
         image: {
-            type: Image,
+            type: String,
             required: [true, 'Photo is mandatory'],
         },
         urgency: {

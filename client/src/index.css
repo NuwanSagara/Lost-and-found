@@ -1,8 +1,276 @@
 @import "tailwindcss";
 
-@layer base {
-  body {
-    @apply bg-gray-50 text-gray-900 font-sans antialiased;
+@theme {
+  --color-brand-primary: #6C63FF; /* electric violet */
+  --color-brand-secondary: #00D4AA; /* teal mint */
+  --color-tag-lost: #FF6B6B; /* coral red */
+  --color-tag-found: #51CF66; /* success green */
+  --color-bg-dark: #0A0A0F; /* near black */
+  --color-surface-glass: rgba(255, 255, 255, 0.04);
+  --color-surface-glass-border: rgba(255, 255, 255, 0.08);
+  --color-text-primary: #F8F9FA;
+  --color-text-muted: #868E96;
+
+  --font-display: 'Clash Display', 'Syne', sans-serif;
+  --font-body: 'Inter', 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+:root,
+.theme-dark {
+  color-scheme: dark;
+  --color-brand-primary: #6C63FF;
+  --color-brand-secondary: #00D4AA;
+  --color-tag-lost: #FF6B6B;
+  --color-tag-found: #51CF66;
+  --color-bg-dark: #0A0A0F;
+  --color-surface-glass: rgba(255, 255, 255, 0.04);
+  --color-surface-glass-border: rgba(255, 255, 255, 0.08);
+  --color-text-primary: #F8F9FA;
+  --color-text-muted: #868E96;
+  --campusfound-grid-line: rgba(255, 107, 53, 0.03);
+  --campusfound-orb-top: radial-gradient(circle, rgba(255, 107, 53, 0.08) 0%, rgba(255, 107, 53, 0) 70%);
+  --campusfound-orb-bottom: radial-gradient(circle, rgba(255, 107, 53, 0.05) 0%, rgba(255, 107, 53, 0) 72%);
+  --campusfound-shadow-color: rgba(0, 0, 0, 0.24);
+}
+
+.theme-light {
+  color-scheme: light;
+  --color-bg-dark: #f3f6fb;
+  --color-surface-glass: rgba(255, 255, 255, 0.74);
+  --color-surface-glass-border: rgba(15, 23, 42, 0.1);
+  --color-text-primary: #162033;
+  --color-text-muted: #5f6c84;
+  --campusfound-grid-line: rgba(22, 32, 51, 0.05);
+  --campusfound-orb-top: radial-gradient(circle, rgba(108, 99, 255, 0.12) 0%, rgba(108, 99, 255, 0) 72%);
+  --campusfound-orb-bottom: radial-gradient(circle, rgba(0, 212, 170, 0.11) 0%, rgba(0, 212, 170, 0) 72%);
+  --campusfound-shadow-color: rgba(15, 23, 42, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg-dark);
+  color: var(--color-text-primary);
+  font-family: 'Inter', sans-serif;
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+a,
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Clash Display', 'Syne', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.glass-panel {
+  background-color: var(--color-surface-glass);
+  border: 1px solid var(--color-surface-glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 18px 60px -28px var(--campusfound-shadow-color);
+}
+
+.campusfound-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -3;
+  opacity: 1;
+  background-image:
+    linear-gradient(var(--campusfound-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--campusfound-grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: gridPan 18s linear infinite;
+}
+
+.campusfound-orb {
+  position: fixed;
+  pointer-events: none;
+  z-index: -2;
+  filter: blur(10px);
+}
+
+.campusfound-orb-top {
+  top: -120px;
+  right: -120px;
+  width: 420px;
+  height: 420px;
+  border-radius: 999px;
+  background: var(--campusfound-orb-top);
+}
+
+.campusfound-orb-bottom {
+  bottom: -180px;
+  left: -120px;
+  width: 460px;
+  height: 460px;
+  border-radius: 999px;
+  background: var(--campusfound-orb-bottom);
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
+.theme-light .text-white {
+  color: var(--color-text-primary) !important;
+}
+
+.theme-light .hover\:text-white:hover {
+  color: var(--color-text-primary) !important;
+}
+
+.theme-light .bg-black\/10 {
+  background-color: rgba(15, 23, 42, 0.03) !important;
+}
+
+.theme-light .bg-black\/20 {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+.theme-light .bg-black\/30 {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+.theme-light .bg-black\/40,
+.theme-light .bg-black\/50,
+.theme-light .bg-black\/60 {
+  background-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+.theme-light .bg-white\/5,
+.theme-light .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.62) !important;
+}
+
+.theme-light .border-white\/5,
+.theme-light .border-white\/10,
+.theme-light .border-white\/20,
+.theme-light .border-white\/30 {
+  border-color: rgba(15, 23, 42, 0.1) !important;
+}
+
+.theme-light .shadow-black\/20,
+.theme-light .shadow-black\/40 {
+  --tw-shadow-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+.theme-light input[type="date"] {
+  color-scheme: light;
+}
+
+@keyframes statFlash {
+  0% {
+    border-color: rgba(255,107,53,0.7);
+  }
+  100% {
+    border-color: rgba(255,255,255,0.07);
+  }
+}
+
+@keyframes cardFadeOut {
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+    height: 0;
+    padding: 0;
+  }
+}
+
+@keyframes newItemPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(-16px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.02) translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,100% {
+    box-shadow: 0 0 0 0 rgba(81,207,102,0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(81,207,102,0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gridPan {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(40px, 40px, 0);
+  }
+}
+
+@media (max-width: 767px) {
+  .campusfound-orb-top {
+    width: 300px;
+    height: 300px;
+    right: -90px;
+    top: -80px;
+  }
+
+  .campusfound-orb-bottom {
+    width: 320px;
+    height: 320px;
+    left: -110px;
+    bottom: -120px;
+  }
+}

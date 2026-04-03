@@ -1,4 +1,5 @@
 const LostItem = require('../models/LostItem');
+const { USER_ROLES, normalizeRole } = require('../middleware/authMiddleware');
 
 // @desc    Get all lost items (active only)
 // @route   GET /api/lost
@@ -37,6 +38,10 @@ const getLostItem = async (req, res) => {
 // @access  Private
 const createLostItem = async (req, res) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Please log in again before posting an item' });
+        }
+
         const { title, category, description, location, dateLost, image, urgency } =
             req.body;
 
@@ -73,7 +78,7 @@ const updateLostItem = async (req, res) => {
         }
 
         // Check if user is the owner
-        if (item.postedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+        if (item.postedBy.toString() !== req.user.id && normalizeRole(req.user.role) !== USER_ROLES.ADMIN) {
             return res.status(401).json({ message: 'User not authorized to update' });
         }
 
@@ -108,7 +113,7 @@ const deleteLostItem = async (req, res) => {
         }
 
         // Check if user is owner
-        if (item.postedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+        if (item.postedBy.toString() !== req.user.id && normalizeRole(req.user.role) !== USER_ROLES.ADMIN) {
             return res.status(401).json({ message: 'User not authorized to delete' });
         }
 

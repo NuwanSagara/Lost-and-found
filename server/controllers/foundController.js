@@ -1,4 +1,5 @@
 const FoundItem = require('../models/FoundItem');
+const { USER_ROLES, normalizeRole } = require('../middleware/authMiddleware');
 
 // @desc    Get all found items (active only by default)
 // @route   GET /api/found
@@ -37,6 +38,10 @@ const getFoundItem = async (req, res) => {
 // @access  Private
 const createFoundItem = async (req, res) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Please log in again before posting an item' });
+        }
+
         const {
             title,
             category,
@@ -80,7 +85,7 @@ const updateFoundItem = async (req, res) => {
         }
 
         // Check ownership
-        if (item.postedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+        if (item.postedBy.toString() !== req.user.id && normalizeRole(req.user.role) !== USER_ROLES.ADMIN) {
             return res.status(401).json({ message: 'User not authorized to update' });
         }
 
@@ -108,7 +113,7 @@ const deleteFoundItem = async (req, res) => {
         }
 
         // Check ownership
-        if (item.postedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+        if (item.postedBy.toString() !== req.user.id && normalizeRole(req.user.role) !== USER_ROLES.ADMIN) {
             return res.status(401).json({ message: 'User not authorized to delete' });
         }
 

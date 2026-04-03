@@ -12,10 +12,11 @@ export const SocketProvider = ({ children }) => {
 
     useEffect(() => {
         let newSocket = null;
+        const apiUrl = import.meta.env.VITE_API_URL;
 
-        if (user) {
+        if (user && apiUrl) {
             // Connect to the Socket.io server
-            newSocket = io(import.meta.env.VITE_API_URL.replace('/api', ''), {
+            newSocket = io(apiUrl.replace('/api', ''), {
                 autoConnect: true,
             });
 
@@ -24,7 +25,7 @@ export const SocketProvider = ({ children }) => {
             newSocket.on('connect', () => {
                 console.log('Connected to socket server');
                 // Join user's personal room for notifications
-                newSocket.emit('join_user_room', user._id);
+                newSocket.emit('join_user_room', user._id || user.id);
             });
 
             // We can also set up a global listener for notifications here if we want them to pop up anywhere
